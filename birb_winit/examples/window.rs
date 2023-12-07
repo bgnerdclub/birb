@@ -1,6 +1,6 @@
 use birb::{App, Module};
 use birb_window::{Key, Window};
-use birb_winit::Window as WinitWindow;
+use birb_winit::WinitWindow;
 
 #[derive(Debug)]
 struct CloseOnEscape {}
@@ -16,7 +16,7 @@ impl Module for CloseOnEscape {
 
 pub fn main() {
     let mut app = App::new();
-    WinitWindow::new(&mut app);
+    app.register(WinitWindow::register);
     app.register_module(CloseOnEscape {});
     app.run();
 }

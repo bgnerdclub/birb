@@ -1,39 +1,48 @@
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 use birb::Module;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key {
     Escape,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Event {
     KeyPress(Key),
     KeyRelease(Key),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Window {
     down: Vec<Key>,
 }
 
 impl Window {
+    #[must_use]
     pub fn new() -> Self {
-        Self { down: Vec::new() }
+        Self::default()
     }
 
+    #[must_use]
     pub fn is_down(&self, key: Key) -> bool {
         self.down.contains(&key)
     }
 
     pub fn submit(&mut self, event: Event) {
-        println!("{:?}", event);
+        println!("{event:?}");
         match event {
             Event::KeyPress(key) => {
-                if !self.down.contains(&key) { self.down.push(key) }
+                if !self.down.contains(&key) {
+                    self.down.push(key);
+                }
             }
-            Event::KeyRelease(key) => match self.down.iter().position(|x| *x == key) {
-                Some(index) => { self.down.remove(index); },
-                None => ()
+            Event::KeyRelease(key) => {
+                if let Some(index) = self.down.iter().position(|x| *x == key) {
+                    self.down.remove(index);
+                }
             }
         }
     }

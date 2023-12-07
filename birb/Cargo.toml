@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 list-any = "0.2.1"
+
+[dev-dependencies]
+rayon = "1.8.0"
