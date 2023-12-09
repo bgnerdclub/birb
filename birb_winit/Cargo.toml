@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 birb = { version = "0.1.0", path = "../birb" }
 birb_window = { version = "0.1.0", path = "../birb_window" }
+crossbeam-channel = "0.5.8"
 winit = "0.29.4"

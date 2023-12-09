@@ -5,24 +5,78 @@
 #![feature(trait_upcasting)]
 
 use list_any::VecAny;
-
+use parking_lot::{
+    lock_api::{MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLockReadGuard, RwLockWriteGuard},
+    RawRwLock, RwLock,
+};
+use rayon::prelude::*;
 use std::{
     any::{Any, TypeId},
-    cell::{Ref, RefCell, RefMut},
     collections::HashMap,
     fmt::Debug,
-    rc::Rc,
+    ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
-pub trait Module: Any + Debug {
-    fn tick(&mut self, _: &mut App) {}
+pub trait Module: Any + Debug + Send + Sync {
+    fn tick(&mut self, _: &App) {}
+}
+
+pub trait MainThreadModule: Any + Debug {
+    fn tick(&mut self, _: &MainThreadApp) {}
+}
+
+#[derive(Default)]
+pub struct MainThreadApp {
+    app: App,
+    modules: HashMap<TypeId, Box<RwLock<dyn MainThreadModule>>>,
+}
+
+impl MainThreadApp {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn register_main_thread_module<T: 'static + MainThreadModule>(&mut self, module: T) {
+        self.modules
+            .insert(TypeId::of::<T>(), Box::new(RwLock::new(module)));
+    }
+
+    pub fn tick(&self) {
+        self.modules
+            .iter()
+            .for_each(|(_, module)| module.write().tick(self));
+        self.app.tick();
+    }
+
+    pub fn run(&self) {
+        *self.app.running.write() = true;
+        while *self.app.running.read() {
+            self.tick();
+        }
+    }
+}
+
+impl Deref for MainThreadApp {
+    type Target = App;
+
+    fn deref(&self) -> &Self::Target {
+        &self.app
+    }
+}
+
+impl DerefMut for MainThreadApp {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.app
+    }
 }
 
 #[derive(Default)]
 pub struct App {
-    entities: HashMap<TypeId, VecAny>,
-    modules: Vec<Rc<RefCell<dyn Module>>>,
-    running: bool,
+    entities: HashMap<TypeId, RwLock<VecAny>>,
+    modules: HashMap<TypeId, Box<RwLock<dyn Module>>>,
+    running: RwLock<bool>,
 }
 
 impl App {
@@ -37,9 +91,9 @@ impl App {
     pub fn register_entity<T: 'static + Sync + Send>(&mut self, entity: T) {
         let id = TypeId::of::<T>();
         match self.entities.get_mut(&id) {
-            Some(ents) => ents.downcast_mut().unwrap().push(entity),
+            Some(ents) => ents.write().downcast_mut().unwrap().push(entity),
             None => {
-                self.entities.insert(id, vec![entity].into());
+                self.entities.insert(id, RwLock::new(vec![entity].into()));
             }
         }
     }
@@ -50,15 +104,21 @@ impl App {
     pub fn register_entities<T: 'static + Sync + Send + Clone>(&mut self, entities: &[T]) {
         let id = TypeId::of::<T>();
         match self.entities.get_mut(&id) {
-            Some(ents) => ents.downcast_mut().unwrap().extend_from_slice(entities),
+            Some(ents) => ents
+                .write()
+                .downcast_mut()
+                .unwrap()
+                .extend_from_slice(entities),
             None => {
-                self.entities.insert(id, entities.to_vec().into());
+                self.entities
+                    .insert(id, RwLock::new(entities.to_vec().into()));
             }
         }
     }
 
     pub fn register_module<T: 'static + Module>(&mut self, module: T) {
-        self.modules.push(Rc::new(RefCell::new(module)));
+        self.modules
+            .insert(TypeId::of::<T>(), Box::new(RwLock::new(module)));
     }
 
     pub fn register<F: FnOnce(&mut Self)>(&mut self, func: F) {
@@ -69,58 +129,55 @@ impl App {
     /// Panics if entities map has a mismatch between the type stated in the key and the type
     /// stated in the value
     #[must_use]
-    pub fn get_entity<T: 'static + Send + Sync>(&self) -> &[T] {
-        self.entities.get(&TypeId::of::<T>()).map_or_else(
-            || &[] as &[T],
-            |entities| entities.downcast_slice().unwrap(),
-        )
+    pub fn get_entity<T: 'static + Send + Sync>(
+        &self,
+    ) -> Option<MappedRwLockReadGuard<'_, RawRwLock, [T]>> {
+        self.entities.get(&TypeId::of::<T>()).map(|entities| {
+            RwLockReadGuard::map(entities.read(), |entities| {
+                entities.downcast_slice().unwrap()
+            })
+        })
     }
 
     /// # Panics
     /// Panics if entities map has a mismatch between the type stated in the key and the type
     /// stated in the value
     #[must_use]
-    pub fn get_entity_mut<T: 'static + Send + Sync>(&mut self) -> &mut [T] {
-        self.entities.get_mut(&TypeId::of::<T>()).map_or_else(
-            || &mut [] as &mut [T],
-            |entities| entities.downcast_slice_mut().unwrap(),
-        )
-    }
-
-    #[must_use]
-    pub fn get_module<T: 'static>(&self) -> Option<Ref<'_, T>> {
-        self.modules.iter().find_map(|system| {
-            Ref::filter_map(system.try_borrow().ok()?, |x| {
-                (x as &dyn Any).downcast_ref::<T>()
+    pub fn get_entity_mut<T: 'static + Send + Sync>(
+        &self,
+    ) -> Option<MappedRwLockWriteGuard<'_, RawRwLock, [T]>> {
+        self.entities.get(&TypeId::of::<T>()).map(|entities| {
+            RwLockWriteGuard::map(entities.write(), |entities| {
+                entities.downcast_slice_mut().unwrap()
             })
-            .ok()
         })
     }
 
     #[must_use]
-    pub fn get_module_mut<T: 'static>(&self) -> Option<RefMut<'_, T>> {
-        self.modules.iter().find_map(|system| {
-            RefMut::filter_map(system.try_borrow_mut().ok()?, |x| {
-                (x as &mut dyn Any).downcast_mut::<T>()
+    pub fn get_module<T: 'static>(&self) -> Option<MappedRwLockReadGuard<'_, RawRwLock, T>> {
+        self.modules.get(&TypeId::of::<T>()).map(|module| {
+            RwLockReadGuard::map(module.read(), |module| {
+                (module as &dyn Any).downcast_ref().unwrap()
             })
-            .ok()
         })
     }
 
-    pub fn tick(&mut self) {
-        for module in self.modules.clone() {
-            module.borrow_mut().tick(self);
-        }
+    #[must_use]
+    pub fn get_module_mut<T: 'static>(&self) -> Option<MappedRwLockWriteGuard<'_, RawRwLock, T>> {
+        self.modules.get(&TypeId::of::<T>()).map(|module| {
+            RwLockWriteGuard::map(module.write(), |module| {
+                (module as &mut dyn Any).downcast_mut().unwrap()
+            })
+        })
     }
 
-    pub fn run(&mut self) {
-        self.running = true;
-        while self.running {
-            self.tick();
-        }
+    pub fn tick(&self) {
+        self.modules.par_iter().for_each(|(_, module)| {
+            module.write().tick(self);
+        })
     }
 
-    pub fn exit(&mut self) {
-        self.running = false;
+    pub fn exit(&self) {
+        *self.running.write() = false;
     }
 }

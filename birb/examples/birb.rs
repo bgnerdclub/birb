@@ -12,9 +12,10 @@ struct Birb {
 struct BirbSystem {}
 
 impl Module for BirbSystem {
-    fn tick(&mut self, app: &mut App) {
+    fn tick(&mut self, app: &App) {
         let offset = app.get_module::<SystemTwo>().unwrap().offset;
         app.get_entity_mut::<Birb>()
+            .unwrap()
             .par_iter_mut()
             .for_each(|birb| birb.id += offset)
     }
@@ -26,7 +27,7 @@ struct SystemTwo {
 }
 
 impl Module for SystemTwo {
-    fn tick(&mut self, _: &mut App) {}
+    fn tick(&mut self, _: &App) {}
 }
 
 pub fn main() {

@@ -6,8 +6,9 @@ use birb_winit::WinitWindow;
 struct CloseOnEscape {}
 
 impl Module for CloseOnEscape {
-    fn tick(&mut self, app: &mut App) {
-        if app.get_module::<Window>().unwrap().is_down(Key::Escape) {
+    fn tick(&mut self, app: &App) {
+        let window = app.get_module::<Window>().unwrap();
+        if window.is_down(Key::Escape) || window.is_down(Key::Q) {
             println!("Exitting");
             app.exit()
         }

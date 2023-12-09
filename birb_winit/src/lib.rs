@@ -4,7 +4,9 @@
 
 use birb::{App, Module};
 use birb_window::{Event, Key};
-use winit::platform::run_on_demand::EventLoopExtRunOnDemand;
+
+use crossbeam_channel::{unbounded, Receiver, Sender};
+use winit::{event, platform::x11::EventLoopBuilderExtX11};
 
 #[allow(clippy::too_many_lines)]
 const fn winit_to_key(key: winit::keyboard::PhysicalKey) -> Option<Key> {
@@ -122,8 +124,8 @@ const fn winit_to_key(key: winit::keyboard::PhysicalKey) -> Option<Key> {
 
 #[derive(Debug)]
 pub struct WinitWindow {
-    event_loop: winit::event_loop::EventLoop<()>,
-    window: winit::window::Window,
+    rx: Receiver<Event>,
+    tx: Sender<Event>,
 }
 
 impl WinitWindow {
@@ -132,42 +134,60 @@ impl WinitWindow {
     pub fn register(app: &mut App) {
         app.register_module(birb_window::Window::new());
 
-        let event_loop = winit::event_loop::EventLoop::new().unwrap();
-        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
-        let window = winit::window::WindowBuilder::new()
-            .build(&event_loop)
-            .unwrap();
+        let (tx, rx) = unbounded();
+        let (tx1, rx1) = (tx.clone(), rx.clone());
 
-        app.register_module(Self { event_loop, window });
+        std::thread::spawn(|| {
+            let event_loop = winit::event_loop::EventLoopBuilder::new()
+                .with_any_thread(true)
+                .build()
+                .unwrap();
+            event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+            let _ = winit::window::WindowBuilder::new()
+                .build(&event_loop)
+                .unwrap();
+
+            event_loop.run(move |event, elwt| Self::run(tx.clone(), rx.clone(), event, elwt))
+        })
+        .join()
+        .unwrap()
+        .unwrap();
+
+        app.register_module(Self { rx: rx1, tx: tx1 });
+    }
+
+    pub fn run(
+        tx: Sender<Event>,
+        rx: Receiver<Event>,
+        event: winit::event::Event<()>,
+        elwt: &winit::event_loop::EventLoopWindowTarget<()>,
+    ) {
+        elwt.set_control_flow(winit::event_loop::ControlFlow::Poll);
+        if let winit::event::Event::WindowEvent { event, .. } = event {
+            match event {
+                winit::event::WindowEvent::KeyboardInput { event, .. } => {
+                    let Some(key) = winit_to_key(event.physical_key) else {
+                        return;
+                    };
+
+                    match event.state {
+                        winit::event::ElementState::Pressed => {
+                            tx.send(Event::KeyPress(key)).unwrap();
+                        }
+                        winit::event::ElementState::Released => {
+                            tx.send(Event::KeyRelease(key)).unwrap();
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
     }
 }
 
 impl Module for WinitWindow {
-    fn tick(&mut self, app: &mut App) {
+    fn tick(&mut self, app: &App) {
         let mut window = app.get_module_mut::<birb_window::Window>().unwrap();
-        self.event_loop
-            .run_on_demand(|event, ewlt| {
-                if let winit::event::Event::WindowEvent { event, .. } = event {
-                    match event {
-                        winit::event::WindowEvent::KeyboardInput { event, .. } => {
-                            let Some(key) = winit_to_key(event.physical_key) else {
-                                return;
-                            };
-
-                            match event.state {
-                                winit::event::ElementState::Pressed => {
-                                    window.submit(Event::KeyPress(key));
-                                }
-                                winit::event::ElementState::Released => {
-                                    window.submit(Event::KeyRelease(key));
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                ewlt.exit();
-            })
-            .unwrap();
+        self.rx.try_iter().for_each(|event| window.submit(event));
     }
 }
