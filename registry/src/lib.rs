@@ -1,18 +1,19 @@
-#![feature(downcast_unchecked)]
-#![feature(trait_upcasting)]
 #![feature(const_trait_impl)]
 
 use birb::Module;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Registry {
     data: HashMap<String, Vec<u8>>
 }
 
 // Implement Registry Methods
 impl Registry {
+    pub fn new() -> Self {
+        Self::default()
+    }
     pub fn store<T>(&mut self, key: String, object: &T) where T: Serialize {
         let jstring = serde_json::to_string(object);
         self.data.insert(key, jstring.unwrap().into_bytes());
@@ -28,7 +29,7 @@ impl Module for Registry {}
 
 #[test]
 fn test_registry_kv() {
-    let mut registry = Registry { data: HashMap::new() };
+    let mut registry = Registry::new();
     const INDEX_VALUE: &str = "test_value";
     const INDEX_KEY: &str = "TEST/key";
     registry.store::<String>(INDEX_KEY.to_string(), &INDEX_VALUE.to_string());
