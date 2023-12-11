@@ -35,7 +35,7 @@ pub fn main() {
     app.register_module(BirbSystem {});
     app.register_module(SystemTwo { offset: 1 });
 
-    let birbs = [Birb { id: 0 }; 1_000_000];
+    let birbs = vec![Birb { id: 0 }; 1_000_000];
     app.register_entities(&birbs);
 
     let start = Instant::now();
@@ -44,5 +44,9 @@ pub fn main() {
     }
     let end = Instant::now();
 
-    println!("{}us", (end - start).as_micros());
+    println!(
+        "1 tick took: {}ns {:.5}s",
+        (end - start).as_nanos() / 60,
+        (end - start).as_secs_f64() / 60.0
+    );
 }

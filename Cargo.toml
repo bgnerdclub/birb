@@ -1,7 +1,3 @@
 [workspace]
 resolver = "2"
-members = [
-  "birb",
-  "birb_window",
-  "birb_winit",
-]
+members = ["birb", "birb_maths", "birb_window", "birb_winit"]
