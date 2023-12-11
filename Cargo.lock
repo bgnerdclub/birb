@@ -98,8 +98,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "birb_examples"
+version = "0.1.0"
+dependencies = [
+ "birb",
+ "birb_maths",
+ "birb_utils",
+ "birb_window",
+ "birb_winit",
+ "rayon",
+]
+
+[[package]]
 name = "birb_maths"
 version = "0.1.0"
+
+[[package]]
+name = "birb_utils"
+version = "0.1.0"
+dependencies = [
+ "birb",
+]
 
 [[package]]
 name = "birb_window"

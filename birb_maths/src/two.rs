@@ -78,6 +78,14 @@ impl<T: Mul<Output = T> + Add<Output = T> + Sub<Output = T> + Copy> Mul<Rotor<T>
     }
 }
 
+impl<T: Mul<Output = T> + Copy> Mul<T> for Vector<T> {
+    type Output = Self;
+
+    fn mul(self, rhs: T) -> Self::Output {
+        Self { x: self.x * rhs, y: self.y * rhs }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rotor<T> {
     pub real: T,
