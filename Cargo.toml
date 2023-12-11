@@ -3,5 +3,5 @@ resolver = "2"
 members = [
   "birb",
   "birb_window",
-  "birb_winit",
+  "birb_winit", "registry",
 ]
