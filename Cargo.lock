@@ -98,6 +98,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "birb_log"
+version = "0.1.0"
+dependencies = [
+ "birb",
+]
+
+[[package]]
 name = "birb_window"
 version = "0.1.0"
 dependencies = [
