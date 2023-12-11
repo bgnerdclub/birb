@@ -15,7 +15,6 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     ops::{Deref, DerefMut},
-    sync::Arc,
 };
 
 pub trait Module: Any + Debug + Send + Sync {

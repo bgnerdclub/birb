@@ -2,12 +2,10 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use birb::{App, MainThreadApp, MainThreadModule, Module};
+use birb::{MainThreadApp, MainThreadModule};
 use birb_window::{Event, Key};
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
 use winit::platform::run_on_demand::EventLoopExtRunOnDemand;
-use winit::{event, platform::x11::EventLoopBuilderExtX11};
 
 #[allow(clippy::too_many_lines)]
 const fn winit_to_key(key: winit::keyboard::PhysicalKey) -> Option<Key> {
@@ -142,12 +140,6 @@ impl WinitWindow {
             .unwrap();
 
         app.register_main_thread_module(Self { event_loop, window });
-    }
-
-    pub fn run(
-        event: winit::event::Event<()>,
-        elwt: &winit::event_loop::EventLoopWindowTarget<()>,
-    ) {
     }
 }
 
