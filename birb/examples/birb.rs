@@ -35,7 +35,7 @@ pub fn main() {
     app.register_module(BirbSystem {});
     app.register_module(SystemTwo { offset: 1 });
 
-    let birbs = [Birb { id: 0 }; 1_000_000];
+    let birbs = [Birb { id: 0 }; 100_000];
     app.register_entities(&birbs);
 
     let start = Instant::now();
