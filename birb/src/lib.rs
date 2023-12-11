@@ -43,6 +43,10 @@ impl MainThreadApp {
             .insert(TypeId::of::<T>(), Box::new(RwLock::new(module)));
     }
 
+    pub fn register<F: FnOnce(&mut Self)>(&mut self, func: F) {
+        func(self);
+    }
+
     pub fn tick(&self) {
         self.modules
             .iter()
@@ -81,8 +85,9 @@ pub struct App {
 
 impl App {
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new() -> MainThreadApp {
+        MainThreadApp::default()
     }
 
     /// # Panics
@@ -119,10 +124,6 @@ impl App {
     pub fn register_module<T: 'static + Module>(&mut self, module: T) {
         self.modules
             .insert(TypeId::of::<T>(), Box::new(RwLock::new(module)));
-    }
-
-    pub fn register<F: FnOnce(&mut Self)>(&mut self, func: F) {
-        func(self);
     }
 
     /// # Panics
@@ -174,7 +175,7 @@ impl App {
     pub fn tick(&self) {
         self.modules.par_iter().for_each(|(_, module)| {
             module.write().tick(self);
-        })
+        });
     }
 
     pub fn exit(&self) {
