@@ -47,7 +47,7 @@ impl MainThreadModule for Registry {
                             Ok(_) => {
                                 self.data = serde_json::from_str(&data).unwrap()
                             }
-                            Err(E) => {
+                            Err(_) => {
                                 fs::remove_file("registry.json").unwrap();
                                 self.ticks = 0;
                                 // early return to escape ++ increment on internal tick counter.
