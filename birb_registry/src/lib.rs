@@ -39,8 +39,8 @@ impl MainThreadModule for Registry {
         // shitty persistence :3
         // loads json on zero
         if self.ticks == 0 {
-            if fs::try_exists("registry.json").unwrap() {
-                match File::open("registry.json") {
+            if fs::try_exists("birb_registry.json").unwrap() {
+                match File::open("birb_registry.json") {
                     Ok(mut File) => {
                         let mut data = String::new();
                         match File.read_to_string(&mut data) {
@@ -48,7 +48,7 @@ impl MainThreadModule for Registry {
                                 self.data = serde_json::from_str(&data).unwrap()
                             }
                             Err(_) => {
-                                fs::remove_file("registry.json").unwrap();
+                                fs::remove_file("birb_registry.json").unwrap();
                                 self.ticks = 0;
                                 // early return to escape ++ increment on internal tick counter.
                                 return
@@ -60,7 +60,7 @@ impl MainThreadModule for Registry {
                     }
                 }
             } else {
-                match File::create("registry.json") {
+                match File::create("birb_registry.json") {
                     Ok(mut File) => {
                         // create from empty Hashmap Array
                         match File.write(serde_json::to_vec(&self.data).unwrap().as_slice()) {
@@ -80,7 +80,7 @@ impl MainThreadModule for Registry {
         } else {
             // every 5 seconds
             if self.ticks > 300 {
-                match File::open("registry.json") {
+                match File::open("birb_registry.json") {
                     Ok(mut File) => {
                         match File.write(serde_json::to_vec(&self.data).unwrap().as_slice()) {
                             Err (E) => {
