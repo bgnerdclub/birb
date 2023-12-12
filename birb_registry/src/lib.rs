@@ -6,101 +6,50 @@ use std::{collections::HashMap, io::prelude::*, fs::File, fs};
 use std::fmt::{Debug, Formatter};
 use serde::{Serialize, Deserialize};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Registry {
-    ticks: u16,
-    data: HashMap<String, Vec<u8>>
+    data: HashMap<String, Vec<u8>>,
+    default_save_point: String
 }
+
+const SAVE_DEFAULT_LOCATION: &str = "registry_store.json";
 
 // Implement Registry Methods
 impl Registry {
     pub fn new() -> Self {
-        Registry::default()
+        return Registry {
+            data: HashMap::default(),
+            default_save_point: SAVE_DEFAULT_LOCATION.to_string()
+        };
     }
     pub fn store<T>(&mut self, key: String, object: &T) where T: Serialize {
         self.data.insert(key, serde_json::to_string(object).unwrap().into_bytes());
     }
     pub fn get<T>(&self, key: String) -> T where T: for<'a> Deserialize<'a> {
-        let object: T = serde_json::from_slice(self.data.get(&key).unwrap()).unwrap();
-        return object
+        return serde_json::from_slice(self.data.get(&key).unwrap()).unwrap();
     }
-}
-
-impl Debug for Registry {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Registry")
-            .field("data", &self.data)
-            .finish()
-    }
-}
-
-impl MainThreadModule for Registry {
-    fn tick(&mut self, _: &birb::MainThreadApp) {
-        // shitty persistence :3
-        // loads json on zero
-        if self.ticks == 0 {
-            if fs::try_exists("birb_registry.json").unwrap() {
-                match File::open("birb_registry.json") {
-                    Ok(mut File) => {
-                        let mut data = String::new();
-                        match File.read_to_string(&mut data) {
-                            Ok(_) => {
-                                self.data = serde_json::from_str(&data).unwrap()
-                            }
-                            Err(_) => {
-                                fs::remove_file("birb_registry.json").unwrap();
-                                self.ticks = 0;
-                                // early return to escape ++ increment on internal tick counter.
-                                return
-                            }
-                        }
-                    }
-                    Err(E) => {
-                        panic!("error in loading persistence \n {}", E);
-                    }
-                }
-            } else {
-                match File::create("birb_registry.json") {
-                    Ok(mut File) => {
-                        // create from empty Hashmap Array
-                        match File.write(serde_json::to_vec(&self.data).unwrap().as_slice()) {
-                            Err(E) => {
-                                panic!("error saving persistence \n {}", E)
-                            }
-                            _ => {
-                                // discard, dont care about OK() result
-                            }
-                        }
-                    }
-                    Err (E) => {
-                        panic!("error in creating persistence \n {}", E);
-                    }
-                }
-            }
-        } else {
-            // every 5 seconds
-            if self.ticks > 300 {
-                match File::open("birb_registry.json") {
-                    Ok(mut File) => {
-                        match File.write(serde_json::to_vec(&self.data).unwrap().as_slice()) {
-                            Err (E) => {
-                                panic!("error in persisting persistence \n {}", E);
-                            }
-                            _ => {
-                                // discard, dont care about OK() result
-                            }
-                        }
-                    }
-                    Err(E) => {
-                        panic!("error in persisting persistence \n {}", E);
-                    }
-                }
-                self.ticks = 0;
-            }
+    pub fn load(&mut self, save_point: Option<&str>) {
+        if fs::try_exists(save_point.unwrap_or(&self.default_save_point)).unwrap() {
+            let mut file = File::open(save_point.unwrap_or(&self.default_save_point)).unwrap();
+            let mut data = String::new();
+            file.read_to_string(&mut data).unwrap();
+            self.data = serde_json::from_str(&data).unwrap();
         }
-        self.ticks += 1;
+    }
+
+    fn create_save_file(&mut self, save_point: Option<&str>) {
+        File::create(save_point.unwrap_or(&self.default_save_point)).unwrap().write(serde_json::to_vec(&self.data).unwrap().as_slice()).unwrap();
+    }
+    pub fn save(&mut self, save_point: Option<&str>) {
+        if fs::try_exists(save_point.unwrap_or(&self.default_save_point)).unwrap() {
+            File::open(save_point.unwrap_or(&self.default_save_point)).unwrap().write(serde_json::to_vec(&self.data).unwrap().as_slice()).unwrap();
+        } else {
+            self.create_save_file(save_point)
+        }
     }
 }
+
+impl MainThreadModule for Registry {}
 
 #[cfg(test)]
 mod tests {
