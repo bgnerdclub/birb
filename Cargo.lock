@@ -853,6 +853,7 @@ name = "registry"
 version = "0.1.0"
 dependencies = [
  "birb",
+ "parking_lot",
  "serde",
  "serde_json",
 ]
