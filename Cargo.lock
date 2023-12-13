@@ -121,6 +121,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "birb_ui_generic"
+version = "0.1.0"
+
+[[package]]
 name = "birb_window"
 version = "0.1.0"
 dependencies = [
