@@ -98,12 +98,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "birb_examples"
+version = "0.1.0"
+dependencies = [
+ "birb",
+ "birb_maths",
+ "birb_utils",
+ "birb_window",
+ "birb_winit",
+ "rayon",
+]
+
+[[package]]
+name = "birb_maths"
+version = "0.1.0"
+
+[[package]]
 name = "birb_registry"
 version = "0.1.0"
 dependencies = [
  "birb",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "birb_utils"
+version = "0.1.0"
+dependencies = [
+ "birb",
 ]
 
 [[package]]
@@ -119,7 +142,6 @@ version = "0.1.0"
 dependencies = [
  "birb",
  "birb_window",
- "crossbeam-channel",
  "winit",
 ]
 
@@ -848,15 +870,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "registry"
-version = "0.1.0"
-dependencies = [
- "birb",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "rustix"
 version = "0.38.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -927,6 +940,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.108"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d1c7e3eac408d115102c4c24ad393e0821bb3a5df4d506a80f85f7a742a526b"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]

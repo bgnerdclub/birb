@@ -1,9 +1,9 @@
 #![feature(const_trait_impl)]
 #![feature(fs_try_exists)]
 
-use birb::MainThreadModule;
+use birb::{MainThreadModule, Module};
 use std::{collections::HashMap, io::prelude::*, fs::File, fs};
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use serde::{Serialize, Deserialize};
 
 #[derive(Default, Debug)]
@@ -49,7 +49,7 @@ impl Registry {
     }
 }
 
-impl MainThreadModule for Registry {}
+impl Module for Registry {}
 
 #[cfg(test)]
 mod tests {
