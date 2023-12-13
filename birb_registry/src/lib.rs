@@ -1,7 +1,7 @@
 #![feature(const_trait_impl)]
 #![feature(fs_try_exists)]
 
-use birb::{MainThreadModule, Module};
+use birb::{Module};
 use std::{collections::HashMap, io::prelude::*, fs::File, fs};
 use std::fmt::Debug;
 use serde::{Serialize, Deserialize};
