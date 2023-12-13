@@ -56,13 +56,13 @@ impl<T: SubAssign> SubAssign for Vector<T> {
     }
 }
 
-impl<T: Mul<Output = T> + Add<Output = T> + Copy> Mul for Vector<T> {
+impl<T: Mul<Output = T> + Add<Output = T> + Sub<Output = T> + Copy> Mul for Vector<T> {
     type Output = Rotor<T>;
 
     fn mul(self, rhs: Self) -> Self::Output {
         Rotor {
             real: (self.x * rhs.x + self.y * rhs.y),
-            imaginary: (self.x * rhs.y + self.y * rhs.x),
+            imaginary: (self.x * rhs.y - self.y * rhs.x),
         }
     }
 }
@@ -82,7 +82,10 @@ impl<T: Mul<Output = T> + Copy> Mul<T> for Vector<T> {
     type Output = Self;
 
     fn mul(self, rhs: T) -> Self::Output {
-        Self { x: self.x * rhs, y: self.y * rhs }
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 
