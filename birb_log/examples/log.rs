@@ -7,7 +7,7 @@ struct LogExample {}
 impl Module for LogExample {
     fn tick(&mut self, app: &App) {
         let log_module = app.get_module::<birb_log::Log>().unwrap();
-        log_module.info(0u16, String::from("Test message"));
+        log_module.info(&self, String::from("Test message"));
     }
 }
 
