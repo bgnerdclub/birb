@@ -1,9 +1,7 @@
-#![feature(const_trait_impl)]
-#![feature(fs_try_exists)]
-
 use birb::{Module};
-use std::{collections::HashMap, io::prelude::*, fs::File, fs};
+use std::{collections::HashMap, io::prelude::*, fs::File};
 use std::fmt::Debug;
+use std::path::Path;
 use serde::{Serialize, Deserialize};
 
 #[derive(Default, Debug)]
@@ -29,7 +27,7 @@ impl Registry {
         return serde_json::from_slice(self.data.get(&key).unwrap()).unwrap();
     }
     pub fn load(&mut self, save_point: Option<&str>) {
-        if fs::try_exists(save_point.unwrap_or(&self.default_save_point)).unwrap() {
+        if Path::new(save_point.unwrap_or(&self.default_save_point)).exists() {
             let mut file = File::open(save_point.unwrap_or(&self.default_save_point)).unwrap();
             let mut data = String::new();
             file.read_to_string(&mut data).unwrap();
@@ -41,7 +39,7 @@ impl Registry {
         File::create(save_point.unwrap_or(&self.default_save_point)).unwrap().write(serde_json::to_vec(&self.data).unwrap().as_slice()).unwrap();
     }
     pub fn save(&mut self, save_point: Option<&str>) {
-        if fs::try_exists(save_point.unwrap_or(&self.default_save_point)).unwrap() {
+        if Path::new(save_point.unwrap_or(&self.default_save_point)).exists() {
             File::open(save_point.unwrap_or(&self.default_save_point)).unwrap().write(serde_json::to_vec(&self.data).unwrap().as_slice()).unwrap();
         } else {
             self.create_save_file(save_point)
@@ -53,8 +51,7 @@ impl Module for Registry {}
 
 #[cfg(test)]
 mod tests {
-    use crate::Registry;
-
+    use super::*;
     #[test]
     fn test_registry_kv() {
         let mut registry = Registry::new();
