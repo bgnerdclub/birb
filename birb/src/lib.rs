@@ -83,11 +83,43 @@ impl<'a> From<&'a mut MainThreadApp> for &'a mut App {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UntypedEntityID(usize);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TypedEntityID<T>(usize, std::marker::PhantomData<T>);
+
+impl<T> Copy for TypedEntityID<T> {}
+impl<T> Clone for TypedEntityID<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> From<usize> for TypedEntityID<T> {
+    fn from(value: usize) -> Self {
+        Self(value, std::marker::PhantomData {})
+    }
+}
+
+impl From<usize> for UntypedEntityID {
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
+}
+
+impl<T> From<TypedEntityID<T>> for UntypedEntityID {
+    fn from(value: TypedEntityID<T>) -> Self {
+        Self(value.0)
+    }
+}
+
 #[derive(Default)]
 pub struct App {
-    entities: HashMap<TypeId, RwLock<VecAny>>,
+    entities: HashMap<TypeId, RwLock<(Vec<usize>, VecAny)>>,
     modules: HashMap<TypeId, Box<RwLock<dyn Module>>>,
     running: RwLock<bool>,
+    next_entity_id: usize,
 }
 
 impl App {
@@ -100,14 +132,22 @@ impl App {
     /// # Panics
     /// Panics if entities map has a mismatch between the type stated in the key and the type
     /// stated in the value
-    pub fn register_entity<T: 'static + Sync + Send>(&mut self, entity: T) {
+    pub fn register_entity<T: 'static + Sync + Send>(&mut self, entity: T) -> TypedEntityID<T> {
         let id = TypeId::of::<T>();
+        let entity_id = self.next_entity_id;
         match self.entities.get_mut(&id) {
-            Some(ents) => ents.write().downcast_mut().unwrap().push(entity),
+            Some(ents) => {
+                let mut lock = ents.write();
+                lock.0.push(entity_id);
+                lock.1.downcast_mut().unwrap().push(entity);
+            }
             None => {
-                self.entities.insert(id, RwLock::new(vec![entity].into()));
+                self.entities
+                    .insert(id, RwLock::new((vec![entity_id], vec![entity].into())));
             }
         }
+        self.next_entity_id += 1;
+        entity_id.into()
     }
 
     /// # Panics
@@ -115,15 +155,17 @@ impl App {
     /// stated in the value
     pub fn register_entities<T: 'static + Sync + Send + Clone>(&mut self, entities: &[T]) {
         let id = TypeId::of::<T>();
+        let entity_ids =
+            (self.next_entity_id..self.next_entity_id + entities.len()).collect::<Vec<usize>>();
         match self.entities.get_mut(&id) {
-            Some(ents) => ents
-                .write()
-                .downcast_mut()
-                .unwrap()
-                .extend_from_slice(entities),
+            Some(ents) => {
+                let mut lock = ents.write();
+                lock.0.extend_from_slice(&entity_ids);
+                lock.1.downcast_mut().unwrap().extend_from_slice(entities);
+            }
             None => {
                 self.entities
-                    .insert(id, RwLock::new(entities.to_vec().into()));
+                    .insert(id, RwLock::new((entity_ids, entities.to_vec().into())));
             }
         }
     }
@@ -133,16 +175,84 @@ impl App {
             .insert(TypeId::of::<T>(), Box::new(RwLock::new(module)));
     }
 
+    #[must_use]
+    /// # Panics
+    /// Panics if entities map has a mismatch between the type stated in the key and the type
+    /// stated in the value
+    pub fn get_entity<T: 'static + Send + Sync>(
+        &self,
+        id: TypedEntityID<T>,
+    ) -> Option<MappedRwLockReadGuard<'_, RawRwLock, T>> {
+        self.entities.get(&TypeId::of::<T>()).and_then(|entities| {
+            RwLockReadGuard::try_map(entities.read(), |entities| {
+                let index = entities.0.iter().position(|x| *x == id.0)?;
+                entities.1.downcast_slice().unwrap().get(index)
+            })
+            .ok()
+        })
+    }
+
+    #[must_use]
+    /// # Panics
+    /// Panics if entities map has a mismatch between the type stated in the key and the type
+    /// stated in the value
+    pub fn get_entity_untyped<T: 'static + Send + Sync>(
+        &self,
+        id: UntypedEntityID,
+    ) -> Option<MappedRwLockReadGuard<'_, RawRwLock, T>> {
+        self.entities.get(&TypeId::of::<T>()).and_then(|entities| {
+            RwLockReadGuard::try_map(entities.read(), |entities| {
+                let index = entities.0.iter().position(|x| *x == id.0)?;
+                entities.1.downcast_slice().unwrap().get(index)
+            })
+            .ok()
+        })
+    }
+
+    #[must_use]
+    /// # Panics
+    /// Panics if entities map has a mismatch between the type stated in the key and the type
+    /// stated in the value
+    pub fn get_entity_mut<T: 'static + Send + Sync>(
+        &self,
+        id: TypedEntityID<T>,
+    ) -> Option<MappedRwLockWriteGuard<'_, RawRwLock, T>> {
+        self.entities.get(&TypeId::of::<T>()).and_then(|entities| {
+            RwLockWriteGuard::try_map(entities.write(), |entities| {
+                let index = entities.0.iter().position(|x| *x == id.0)?;
+                entities.1.downcast_slice_mut().unwrap().get_mut(index)
+            })
+            .ok()
+        })
+    }
+
+    #[must_use]
+    /// # Panics
+    /// Panics if entities map has a mismatch between the type stated in the key and the type
+    /// stated in the value
+    pub fn get_entity_untyped_mut<T: 'static + Send + Sync>(
+        &self,
+        id: UntypedEntityID,
+    ) -> Option<MappedRwLockWriteGuard<'_, RawRwLock, T>> {
+        self.entities.get(&TypeId::of::<T>()).and_then(|entities| {
+            RwLockWriteGuard::try_map(entities.write(), |entities| {
+                let index = entities.0.iter().position(|x| *x == id.0)?;
+                entities.1.downcast_slice_mut().unwrap().get_mut(index)
+            })
+            .ok()
+        })
+    }
+
     /// # Panics
     /// Panics if entities map has a mismatch between the type stated in the key and the type
     /// stated in the value
     #[must_use]
-    pub fn get_entity<T: 'static + Send + Sync>(
+    pub fn get_entities<T: 'static + Send + Sync>(
         &self,
     ) -> Option<MappedRwLockReadGuard<'_, RawRwLock, [T]>> {
         self.entities.get(&TypeId::of::<T>()).map(|entities| {
             RwLockReadGuard::map(entities.read(), |entities| {
-                entities.downcast_slice().unwrap()
+                entities.1.downcast_slice().unwrap()
             })
         })
     }
@@ -151,12 +261,12 @@ impl App {
     /// Panics if entities map has a mismatch between the type stated in the key and the type
     /// stated in the value
     #[must_use]
-    pub fn get_entity_mut<T: 'static + Send + Sync>(
+    pub fn get_entities_mut<T: 'static + Send + Sync>(
         &self,
     ) -> Option<MappedRwLockWriteGuard<'_, RawRwLock, [T]>> {
         self.entities.get(&TypeId::of::<T>()).map(|entities| {
             RwLockWriteGuard::map(entities.write(), |entities| {
-                entities.downcast_slice_mut().unwrap()
+                entities.1.downcast_slice_mut().unwrap()
             })
         })
     }

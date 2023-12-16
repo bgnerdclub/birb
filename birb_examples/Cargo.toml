@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 birb = { version = "0.1.0", path = "../birb" }
 birb_maths = { version = "0.1.0", path = "../birb_maths" }
+birb_transform = { version = "0.1.0", path = "../birb_transform" }
 birb_utils = { version = "0.1.0", path = "../birb_utils" }
 birb_window = { version = "0.1.0", path = "../birb_window" }
 birb_winit = { version = "0.1.0", path = "../birb_winit" }

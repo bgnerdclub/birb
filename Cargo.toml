@@ -7,5 +7,6 @@ members = [
   "birb_utils",
   "birb_window",
   "birb_winit",
-  "birb_registry"
+  "birb_registry",
+  "birb_transform",
 ]

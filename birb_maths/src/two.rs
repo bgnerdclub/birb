@@ -1,4 +1,6 @@
-use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+
+pub use crate::{Unit, Zero};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Vector<T> {
@@ -6,7 +8,7 @@ pub struct Vector<T> {
     pub y: T,
 }
 
-impl<T: Copy + Mul<Output = T> + Add<Output = T>> Vector<T> {
+impl<T: Copy> Vector<T> {
     pub const fn new(x: T, y: T) -> Self {
         Self { x, y }
     }
@@ -14,7 +16,9 @@ impl<T: Copy + Mul<Output = T> + Add<Output = T>> Vector<T> {
     pub const fn fill(value: T) -> Self {
         Self { x: value, y: value }
     }
+}
 
+impl<T: Add<Output = T> + Mul<Output = T> + Copy> Vector<T> {
     pub fn dot(&self, rhs: &Self) -> T {
         self.x * rhs.x + self.y * rhs.y
     }
@@ -89,6 +93,28 @@ impl<T: Mul<Output = T> + Copy> Mul<T> for Vector<T> {
     }
 }
 
+impl<T: Unit + Zero + Copy> Vector<T> {
+    #[must_use]
+    pub fn zero() -> Self {
+        Self::fill(T::zero())
+    }
+
+    #[must_use]
+    pub fn one() -> Self {
+        Self::fill(T::unit())
+    }
+
+    #[must_use]
+    pub fn x() -> Self {
+        Self::new(T::unit(), T::zero())
+    }
+
+    #[must_use]
+    pub fn y() -> Self {
+        Self::new(T::zero(), T::unit())
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rotor<T> {
     pub real: T,
@@ -124,6 +150,46 @@ impl<T: Neg<Output = T> + Copy> Rotor<T> {
                 y: self.real,
             },
         }
+    }
+}
+
+impl<T: Unit + Zero + Copy> Rotor<T> {
+    #[must_use]
+    pub fn identity() -> Self {
+        Self {
+            real: T::unit(),
+            imaginary: T::zero(),
+        }
+    }
+}
+
+impl Rotor<f32> {
+    #[must_use]
+    pub fn from_angle(angle: f32) -> Self {
+        let from = Vector { x: 1.0, y: 0.0 };
+        let to = Vector {
+            x: angle.cos(),
+            y: angle.sin(),
+        };
+        from * to
+    }
+}
+
+impl<T: Mul<Output = T> + Add<Output = T> + Sub<Output = T> + Copy> Mul for Rotor<T> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            real: self.real * rhs.real - self.imaginary * rhs.imaginary,
+            imaginary: self.real * rhs.imaginary + self.imaginary * rhs.real,
+        }
+    }
+}
+
+impl<T: Mul<Output = T> + Add<Output = T> + Sub<Output = T> + Copy> MulAssign for Rotor<T> {
+    fn mul_assign(&mut self, rhs: Self) {
+        self.real = self.real * rhs.real - self.imaginary * rhs.imaginary;
+        self.imaginary = self.real * rhs.imaginary + self.imaginary * rhs.real;
     }
 }
 

@@ -18,7 +18,7 @@ impl Module for BirbSystem {
     fn tick(&mut self, app: &App) {
         let gravity = app.get_module::<Gravity>().unwrap().gravity;
         let delta = app.get_module::<Clock>().unwrap().delta();
-        app.get_entity_mut::<Birb>()
+        app.get_entities_mut::<Birb>()
             .unwrap()
             .par_iter_mut()
             .for_each(|birb| {
@@ -62,7 +62,11 @@ pub fn main() {
 
     println!(
         "Fell to: {:?}",
-        app.get_entity::<Birb>().unwrap().first().unwrap().position
+        app.get_entities::<Birb>()
+            .unwrap()
+            .first()
+            .unwrap()
+            .position
     );
 
     println!(
