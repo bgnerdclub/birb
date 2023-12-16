@@ -1,5 +1,4 @@
 use birb::{App, Module};
-use birb_log;
 
 #[derive(Debug)]
 struct LogExample {}
