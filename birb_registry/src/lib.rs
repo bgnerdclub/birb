@@ -74,4 +74,3 @@ mod tests {
         assert_eq!(&return_value, &INDEX_VALUE);
     }
 }
-
