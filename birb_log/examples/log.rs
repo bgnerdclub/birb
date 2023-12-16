@@ -1,5 +1,5 @@
-use birb_log;
 use birb::{App, Module};
+use birb_log;
 
 #[derive(Debug)]
 struct LogExample {}
@@ -19,11 +19,13 @@ impl Module for LogExample {
 }
 
 pub fn test_listener(log_entry: &birb_log::LogEntry) {
-    println!("{} {} {}", log_entry.module, log_entry.timestamp, log_entry.msg);
+    println!(
+        "{} {} {}",
+        log_entry.module, log_entry.timestamp, log_entry.msg
+    );
 }
 
 pub fn test_listener2(_log_entry: &birb_log::LogEntry) {
-    
     println!("i am test listener 2");
 }
 
