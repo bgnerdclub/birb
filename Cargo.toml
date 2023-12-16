@@ -2,7 +2,10 @@
 resolver = "2"
 members = [
   "birb",
+  "birb_examples",
+  "birb_maths",
+  "birb_utils",
   "birb_window",
   "birb_winit",
-  "birb_log"
-]
+  "birb_log",
+  "birb_registry"

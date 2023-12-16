@@ -2,7 +2,6 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![feature(downcast_unchecked)]
-#![feature(trait_upcasting)]
 
 use list_any::VecAny;
 use parking_lot::{
@@ -42,8 +41,11 @@ impl MainThreadApp {
             .insert(TypeId::of::<T>(), Box::new(RwLock::new(module)));
     }
 
-    pub fn register<F: FnOnce(&mut Self)>(&mut self, func: F) {
-        func(self);
+    pub fn register<T, F: FnOnce(&mut T)>(&mut self, func: F)
+    where
+        for<'a> &'a mut T: From<&'a mut Self>,
+    {
+        func(self.into());
     }
 
     pub fn tick(&self) {
@@ -72,6 +74,12 @@ impl Deref for MainThreadApp {
 impl DerefMut for MainThreadApp {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.app
+    }
+}
+
+impl<'a> From<&'a mut MainThreadApp> for &'a mut App {
+    fn from(value: &'a mut MainThreadApp) -> Self {
+        value
     }
 }
 
@@ -153,6 +161,9 @@ impl App {
         })
     }
 
+    /// # Panics
+    /// Panics if modules map has a mismatch between the type stated in the key and the type
+    /// stated in the value
     #[must_use]
     pub fn get_module<T: 'static>(&self) -> Option<MappedRwLockReadGuard<'_, RawRwLock, T>> {
         self.modules.get(&TypeId::of::<T>()).map(|module| {
@@ -162,6 +173,9 @@ impl App {
         })
     }
 
+    /// # Panics
+    /// Panics if modules map has a mismatch between the type stated in the key and the type
+    /// stated in the value
     #[must_use]
     pub fn get_module_mut<T: 'static>(&self) -> Option<MappedRwLockWriteGuard<'_, RawRwLock, T>> {
         self.modules.get(&TypeId::of::<T>()).map(|module| {
