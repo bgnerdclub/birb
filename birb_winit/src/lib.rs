@@ -121,6 +121,7 @@ const fn winit_to_key(key: winit::keyboard::PhysicalKey) -> Option<Key> {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct WinitWindow {
     event_loop: winit::event_loop::EventLoop<()>,
@@ -149,23 +150,22 @@ impl MainThreadModule for WinitWindow {
         self.event_loop
             .run_on_demand(|event, elwt| {
                 elwt.exit();
-                if let winit::event::Event::WindowEvent { event, .. } = event {
-                    match event {
-                        winit::event::WindowEvent::KeyboardInput { event, .. } => {
-                            let Some(key) = winit_to_key(event.physical_key) else {
-                                return;
-                            };
+                if let winit::event::Event::WindowEvent {
+                    event: winit::event::WindowEvent::KeyboardInput { event, .. },
+                    ..
+                } = event
+                {
+                    let Some(key) = winit_to_key(event.physical_key) else {
+                        return;
+                    };
 
-                            match event.state {
-                                winit::event::ElementState::Pressed => {
-                                    window.submit(Event::KeyPress(key));
-                                }
-                                winit::event::ElementState::Released => {
-                                    window.submit(Event::KeyRelease(key));
-                                }
-                            }
+                    match event.state {
+                        winit::event::ElementState::Pressed => {
+                            window.submit(Event::KeyPress(key));
                         }
-                        _ => (),
+                        winit::event::ElementState::Released => {
+                            window.submit(Event::KeyRelease(key));
+                        }
                     }
                 }
             })

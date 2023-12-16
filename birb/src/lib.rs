@@ -2,7 +2,6 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![feature(downcast_unchecked)]
-#![feature(trait_upcasting)]
 
 use list_any::VecAny;
 use parking_lot::{
@@ -42,7 +41,10 @@ impl MainThreadApp {
             .insert(TypeId::of::<T>(), Box::new(RwLock::new(module)));
     }
 
-    pub fn register<T, F: FnOnce(&mut T)>(&mut self, func: F) where for<'a> &'a mut T: From<&'a mut MainThreadApp> {
+    pub fn register<T, F: FnOnce(&mut T)>(&mut self, func: F)
+    where
+        for<'a> &'a mut T: From<&'a mut Self>,
+    {
         func(self.into());
     }
 
