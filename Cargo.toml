@@ -8,4 +8,4 @@ members = [
   "birb_window",
   "birb_winit",
   "birb_log",
-  "birb_registry"
+  "birb_registry"]
