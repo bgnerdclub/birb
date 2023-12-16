@@ -1,13 +1,13 @@
 use birb::{Module};
 use std::{collections::HashMap, io::prelude::*, fs::File};
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Registry {
     data: HashMap<String, Vec<u8>>,
-    default_save_point: Box<Path>
+    default_save_point: PathBuf
 }
 
 const SAVE_DEFAULT_LOCATION: &str = "registry_store.json";
@@ -17,7 +17,7 @@ impl Registry {
     pub fn new() -> Self {
         return Registry {
             data: HashMap::default(),
-            default_save_point: Box::from(Path::new(SAVE_DEFAULT_LOCATION))
+            default_save_point: PathBuf::from(SAVE_DEFAULT_LOCATION)
         };
     }
     pub fn store<T>(&mut self, key: String, object: &T) where T: Serialize {
@@ -26,7 +26,7 @@ impl Registry {
     pub fn get<T>(&self, key: String) -> T where T: for<'a> Deserialize<'a> {
         return serde_json::from_slice(self.data.get(&key).unwrap()).unwrap();
     }
-    pub fn load(&mut self, save_point: Option<&Path>) {
+    pub fn load(&mut self, save_point: Option<&PathBuf>) {
         if save_point.unwrap_or(&self.default_save_point).exists() {
             let mut file = File::open(save_point.unwrap_or(&self.default_save_point)).unwrap();
             let mut data = String::new();
@@ -34,10 +34,10 @@ impl Registry {
             self.data = serde_json::from_str(&data).unwrap();
         }
     }
-    fn create_save_file(&mut self, save_point: Option<&Path>) {
+    fn create_save_file(&mut self, save_point: Option<&PathBuf>) {
         File::create(save_point.unwrap_or(&self.default_save_point)).unwrap().write(serde_json::to_vec(&self.data).unwrap().as_slice()).unwrap();
     }
-    pub fn save(&mut self, save_point: Option<&Path>) {
+    pub fn save(&mut self, save_point: Option<&PathBuf>) {
         if save_point.unwrap_or(&self.default_save_point).exists() {
             File::open(save_point.unwrap_or(&self.default_save_point)).unwrap().write(serde_json::to_vec(&self.data).unwrap().as_slice()).unwrap();
         } else {
