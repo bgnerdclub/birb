@@ -34,7 +34,6 @@ impl Registry {
             self.data = serde_json::from_str(&data).unwrap();
         }
     }
-
     fn create_save_file(&mut self, save_point: Option<&Path>) {
         File::create(save_point.unwrap_or(&self.default_save_point)).unwrap().write(serde_json::to_vec(&self.data).unwrap().as_slice()).unwrap();
     }
